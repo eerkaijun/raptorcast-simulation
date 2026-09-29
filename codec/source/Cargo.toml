@@ -1,0 +1,11 @@
+[package]
+name = "monad-raptor"
+version = "0.1.0"
+edition = "2021"
+
+# Compile the codec without resolving the full BFT workspace.
+[lib]
+path = "../../../monad-bft/monad-raptor/src/lib.rs"
+
+[dependencies]
+rayon = "=1.11.0"

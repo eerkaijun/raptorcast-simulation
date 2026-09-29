@@ -1,0 +1,10 @@
+{
+  "name": "raptorcast-simulation",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node --test tests/engine.test.cjs",
+    "test:browser": "node tests/browser.cjs"
+  },
+  "devDependencies": { "playwright": "1.63.0" }
+}

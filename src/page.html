@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monad RaptorCast · Network simulation</title>
+<style>
+@font-face{font-family:Satoshi;src:url('{{satoshi-regular.otf}}');font-weight:400;font-display:swap}
+@font-face{font-family:Satoshi;src:url('{{satoshi-medium.otf}}');font-weight:500;font-display:swap}
+@font-face{font-family:Satoshi;src:url('{{satoshi-bold.otf}}');font-weight:700;font-display:swap}
+@font-face{font-family:Supply;src:url('{{supply-mono.woff2}}');font-display:swap}
+:root{font-family:Satoshi,Arial,sans-serif;color:#0e0e0e;background:#fff;font-synthesis:none;--muted:#5c5c5c;--line:#e6e6e6;--orange:#ff5500}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid #ff5500;outline-offset:3px}
+main{max-width:1920px;margin:auto;padding:clamp(20px,3.7vw,72px)}header{display:flex;align-items:center;justify-content:space-between;padding-bottom:24px;border-bottom:1px solid var(--line);gap:16px}header img{width:220px;max-width:42%;height:40px;object-fit:contain;object-position:left}.eyebrow{font-family:Supply,monospace;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}h1{font-size:clamp(30px,4.2vw,80px);font-weight:500;line-height:1.08;letter-spacing:-.02em;margin:36px 0 12px}.intro{color:var(--muted);font-size:clamp(14px,1.2vw,21px);margin:0 0 30px;line-height:1.5}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:40px}.visual{min-width:0}.map-wrap{position:relative}canvas{width:100%;height:auto;display:block}.legend{display:flex;gap:12px 22px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin:12px 0 22px}.legend span{display:flex;align-items:center;gap:7px}.swatch{width:26px;height:3px;display:inline-block;background:#0e0e0e}.orange{background:var(--orange)}.grey{background:#8a8a8a}.red{color:#dc2626;font-size:18px;font-weight:700}.counts{display:flex;gap:12px 28px;align-items:center;flex-wrap:wrap;font-size:18px;margin-bottom:10px}.count{font-weight:700;font-variant-numeric:tabular-nums}.previous{font-size:13px;color:var(--muted)}.dash{display:inline-block;width:20px;border-top:2px dashed #b0b0b0;margin-right:6px}.hint{font-size:13px;color:var(--muted);line-height:1.5;margin:12px 0}
+.controls{display:flex;flex-direction:column;gap:17px}.field{display:flex;flex-direction:column;gap:7px}.label{color:var(--muted);font-size:15px}.segmented{display:flex;border:1px solid #d4d4d4;border-radius:5px;overflow:hidden}.segmented button{flex:1;border:0;border-right:1px solid #d4d4d4;background:#fff;padding:10px 4px;font-size:14px;color:#404040}.segmented button:last-child{border-right:0}.segmented button[aria-pressed=true]{background:#0e0e0e;color:#fff}.segmented button:hover{background:#f0f0f0;color:#0e0e0e}.segmented button[aria-pressed=true]:hover{background:#2a2a2a;color:white}.geographic{font-size:16px;font-weight:500}.plain-btn{border:1px solid #d4d4d4;background:#fff;border-radius:4px;padding:8px 12px;color:#404040}.plain-btn:hover{background:#f0f0f0}.reconstruction{border-top:1px solid var(--line);padding-top:18px}.reconstruction dl{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:10px;margin:12px 0 0}.reconstruction dt{font-size:15px;color:var(--muted)}.reconstruction dd{margin:0;font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}.time-origin{font-size:13px;color:var(--muted);margin-top:8px}.playback{display:flex;gap:6px}.caption{font-size:15px;line-height:1.45;color:var(--muted);min-height:44px}.lost-row{display:flex;justify-content:space-between;color:var(--muted);font-size:15px}#lost{font-weight:700;color:#0e0e0e}
+#error{border:1px solid #dc2626;color:#991b1b;background:#fff5f5;padding:18px;margin:20px 0;white-space:pre-wrap}#error[hidden]{display:none}button:disabled,input:disabled{opacity:.5;cursor:wait}
+@media(min-width:1650px){.layout{grid-template-columns:minmax(0,1fr) 345px}.controls{gap:19px}.label,.caption,.geographic,.lost-row{font-size:18px}.segmented button{font-size:16px}.eyebrow{font-size:16px}.counts{font-size:22px}.legend{font-size:16px}.hint{font-size:15px}}
+#chart{height:150px}
+@media(max-width:900px){.layout{grid-template-columns:1fr;gap:24px}.controls{display:grid;grid-template-columns:1fr 1fr}.controls>.eyebrow,.controls>.leader-field,.reconstruction,.playback,.caption,.lost-row{grid-column:1/-1}.intro{margin-bottom:18px}h1{margin-top:24px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main>
+<header><img src="{{logo.svg}}" alt="Category Labs"><span class="eyebrow">Monad · RaptorCast v1</span></header>
+<h1>Network topology simulation</h1>
+<div id="error" role="alert" hidden></div>
+<div class="layout">
+  <div class="visual">
+    <div class="map-wrap"><canvas id="map" width="2600" height="946" aria-label="Animated map of primary and secondary RaptorCast packets"></canvas></div>
+    <div class="legend"><span><i class="swatch orange"></i>Primary · hop 1</span><span><i class="swatch"></i>Primary · hop 2</span><span><i class="swatch grey"></i>Secondary</span><span><i class="red">×</i>Lost packet</span></div>
+    <div class="counts"><span>Validators <span id="validators" class="count">0 / 15</span></span><span>Full nodes <span id="fullnodes" class="count">0 / 48</span></span><span id="previous" class="previous" hidden></span></div>
+    <canvas id="chart" width="2600" height="300" aria-label="Fraction of nodes that reconstructed the proposal over simulated time"></canvas>
+  </div>
+  <aside class="controls" aria-label="Simulation controls">
+    <div class="eyebrow">Network conditions</div>
+    <div class="field"><span class="label">One-way latency</span><span class="geographic">Geographic · 2–160 ms</span></div>
+    <div class="field"><span class="label" id="loss-label">Packet loss per hop</span><div class="segmented" id="loss-controls" role="group" aria-labelledby="loss-label"><button data-loss="0" aria-pressed="true">0%</button><button data-loss="0.1" aria-pressed="false">10%</button><button data-loss="0.2" aria-pressed="false">20%</button><button data-loss="0.3" aria-pressed="false">30%</button></div></div>
+    <div class="field leader-field"><span class="label" id="leader-label">Leader</span><div class="segmented" id="leader-controls" role="group" aria-labelledby="leader-label"><button data-leader="0" aria-pressed="true">Ashburn</button><button data-leader="6" aria-pressed="false">Frankfurt</button><button data-leader="14" aria-pressed="false">Tokyo</button></div></div>
+    <div class="reconstruction">
+      <div class="eyebrow">Reconstruction time</div>
+      <dl><dt>All validators</dt><dd id="validator-time">In progress</dd><dt>All full nodes</dt><dd id="fullnode-time">In progress</dd></dl>
+      <div class="time-origin">From proposal start</div>
+    </div>
+    <div class="playback"><button class="plain-btn" id="pause" aria-label="Pause animation">Pause</button><button class="plain-btn" id="replay">Replay</button></div>
+    <div class="caption" id="caption" role="status">Loading the embedded Raptor codec…</div>
+    <div class="lost-row"><span>Packets lost</span><span id="lost">0 of 0</span></div>
+  </aside>
+</div>
+<noscript>This simulation requires JavaScript and WebAssembly.</noscript>
+</main>
+<script>window.RAPTOR_DATA = {{DATA}};</script>
+<script>{{ENGINE}}</script>
+<script>{{UI}}</script>
+</body>
+</html>

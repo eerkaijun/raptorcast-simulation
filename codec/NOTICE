@@ -1,0 +1,9 @@
+The embedded WebAssembly codec includes monad-raptor source code:
+Copyright (C) 2025 Category Labs, Inc.
+GNU General Public License version 3 or, at your option, any later version.
+See LICENSE in this directory.
+
+The code is compiled directly from ../monad-bft/monad-raptor/src relative to
+the repository root. codec/upstream-lock.json records its reviewed source
+hashes and baseline commit; codec/source/Cargo.toml points to that source.
+The browser bridge is codec/lib.rs. No source changes are made to monad-bft.
