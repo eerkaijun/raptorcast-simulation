@@ -1,4 +1,4 @@
-Open [RaptorCast Simulation.html](<RaptorCast Simulation.html>) directly in a modern browser. It is a standalone, offline page: the map, fonts, and Rust WebAssembly codec are embedded. No server or network access is needed to run it.
+Open [simulation.html](<simulation.html>) directly in a modern browser. It is a standalone, offline page: the map, fonts, and Rust WebAssembly codec are embedded. No server or network access is needed to run it.
 
 The simulation models one valid proposal through primary and secondary **deterministic RaptorCast v1**, based on the sibling `../monad-bft` checkout at `18b86935e4f8465514176d29c1afb93ec7a5ba2d`. Geographic transmission is the only mode. Select the leader and per-hop loss. The page fixes the serialized proposal size at 64 KiB and upload capacity at 1,000 Mbps for every node. The network seed is fixed at 1, so Replay repeats the same result. The previous run remains as a dashed comparison.
 
