@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Erasure Coding</title>
+<style>
+@font-face{font-family:Satoshi;src:url('{{satoshi-regular.otf}}');font-weight:400;font-display:swap}
+@font-face{font-family:Satoshi;src:url('{{satoshi-medium.otf}}');font-weight:500;font-display:swap}
+@font-face{font-family:Satoshi;src:url('{{satoshi-bold.otf}}');font-weight:700;font-display:swap}
+@font-face{font-family:Supply;src:url('{{supply-mono.woff2}}');font-display:swap}
+:root{font-family:Satoshi,Arial,sans-serif;color:#101010;background:#fff;--muted:#656565;--line:#e4e4e4;--orange:#ff5500;--green:#14754a}
+*{box-sizing:border-box}body{margin:0}main{max-width:1550px;height:100dvh;margin:auto;padding:clamp(16px,2.5vw,36px);display:flex;flex-direction:column;overflow:hidden}
+header{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:12px;gap:16px}header img{width:190px;max-width:40%;height:28px;object-fit:contain;object-position:left}
+.eyebrow{font:12px Supply,monospace;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}h1{font-size:clamp(28px,3.5vw,48px);line-height:1.08;letter-spacing:-.025em;font-weight:500;margin:18px 0 24px;flex-shrink:0}
+.pipeline{flex:1;min-height:0;overflow:auto;display:grid;align-content:start;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}.stage{min-width:0}.stage-heading{display:flex;align-items:center;gap:12px;margin-bottom:12px}.step{font:13px Supply,monospace;color:var(--orange)}h2{font-size:19px;font-weight:500;margin:0}
+.image-wrap{position:relative;border:1px solid var(--line);border-radius:6px;background:#fff;aspect-ratio:1;width:min(100%,280px,max(100px,calc(100dvh - 500px)));margin:auto;overflow:hidden}.image-wrap canvas{width:100%;height:100%;display:block;image-rendering:pixelated}#drawing{touch-action:none;cursor:crosshair}
+.placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:24px;background:#fafafa;color:var(--muted);font-size:15px;line-height:1.5}.placeholder strong{font-size:21px;color:#999;font-weight:500}.placeholder[hidden]{display:none}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}.palette{display:flex;gap:6px}.swatch{width:26px;height:26px;border-radius:50%;padding:0;background:var(--ink);border:1px solid #bbb}.swatch[aria-pressed=true]{outline:2px solid #101010;outline-offset:2px}.small{font-size:13px;color:var(--muted);line-height:1.5}
+button{font:inherit;cursor:pointer;border:1px solid #d4d4d4;border-radius:4px;background:white;color:#303030;padding:8px 10px;font-size:13px}button:hover{background:#f5f5f5}button:focus-visible{outline:3px solid var(--orange);outline-offset:3px}button:disabled{cursor:default;opacity:.45}.primary{background:#101010;color:#fff;border-color:#101010}.primary:hover{background:#303030}.buttons{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.text-button{padding:5px 8px;font-size:13px}.stat{font-variant-numeric:tabular-nums;font-weight:500;font-size:15px;margin:10px 0 6px}.caption{font-size:13px;line-height:1.5;color:var(--muted);margin:0 0 10px}progress{display:block;width:100%;height:7px;accent-color:var(--green);margin:12px 0}progress::-webkit-progress-bar{background:#eee;border-radius:5px}progress::-webkit-progress-value{background:var(--green);border-radius:5px}
+.verification{color:var(--green);font-weight:500;min-height:21px}.bank{max-width:340px;margin:12px auto 0;padding:10px;border:1px solid var(--line);border-radius:6px}.bank-heading{display:flex;flex-direction:column;gap:6px}.bank-heading h3{font-size:14px;font-weight:500;margin:0}.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--muted)}.legend span{display:flex;align-items:center;gap:6px}.key{width:10px;height:10px;border:1px solid #bbb;border-radius:2px}.key.received{background:var(--green);border-color:var(--green)}.key.skipped{background:#eee;border-style:dashed}
+.chunk-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px;margin-top:10px;max-height:90px;overflow-y:auto;overscroll-behavior:contain;padding:3px;scrollbar-width:thin}.chunk{position:relative;min-width:0;aspect-ratio:1;min-height:24px;padding:0;overflow:hidden;font:9px Supply,monospace;border-color:#d4d4d4;background:#f5f5f5}.chunk canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;opacity:.25}.chunk span{position:relative;z-index:1;background:#fffd;padding:2px 1px;border-radius:2px;color:#333}.chunk.received{border-color:var(--green);background:#d7eddf}.chunk.received span{background:var(--green);color:white}.chunk.skipped{border-style:dashed;opacity:.5}.chunk.skipped span{text-decoration:line-through}.chunk.latest{outline:2px solid var(--orange);outline-offset:1px}.empty-bank{grid-column:1/-1;color:var(--muted);font-size:12px;padding:8px 0}
+#error{background:#fff5f5;color:#991b1b;border:1px solid #dc2626;padding:14px;margin-bottom:20px}#error[hidden]{display:none}
+@media(max-width:1100px){.pipeline{gap:18px}.chunk-grid{grid-template-columns:repeat(8,minmax(0,1fr))}}
+@media(max-width:760px){.pipeline{grid-template-columns:1fr;gap:28px}.stage{border-bottom:1px solid var(--line);padding-bottom:22px}.stage:last-child{border-bottom:0}.image-wrap{width:min(100%,240px)}.chunk-grid{grid-template-columns:repeat(10,minmax(0,1fr))}.caption{min-height:0}header .eyebrow{font-size:10px}.stage-heading{margin-bottom:14px}}
+</style>
+</head>
+<body>
+<main>
+<header><img src="{{logo.svg}}" alt="Category Labs"><span class="eyebrow">Our Approach</span></header>
+<h1>Erasure Coding</h1>
+<div id="error" role="alert" hidden></div>
+<div class="pipeline">
+  <section class="stage" aria-labelledby="source-heading">
+    <div class="stage-heading"><span class="step">01</span><h2 id="source-heading">Draw the source</h2></div>
+    <div class="image-wrap"><canvas id="drawing" width="128" height="128" aria-label="Drawing canvas. Draw with a mouse or touch, or use the Example button."></canvas></div>
+    <div class="toolbar"><div class="palette" role="group" aria-label="Ink color"><button class="swatch" style="--ink:#101010" data-color="#101010" aria-label="Black" aria-pressed="false"></button><button class="swatch" style="--ink:#ff5500" data-color="#ff5500" aria-label="Orange" aria-pressed="true"></button><button class="swatch" style="--ink:#6654e8" data-color="#6654e8" aria-label="Purple" aria-pressed="false"></button><button class="swatch" style="--ink:#14754a" data-color="#14754a" aria-label="Green" aria-pressed="false"></button><button class="swatch" style="--ink:#fff" data-color="#ffffff" aria-label="Eraser" aria-pressed="false"></button></div></div>
+    <div class="buttons"><button id="encode" class="primary">Encode drawing</button><button id="clear" class="text-button">Clear</button><button id="example" class="text-button">Example</button></div>
+    <p class="small">64 source chunks</p>
+  </section>
+  <section class="stage" aria-labelledby="encoded-heading">
+    <div class="stage-heading"><span class="step">02</span><h2 id="encoded-heading">Feed coded chunks</h2></div>
+    <div class="image-wrap"><canvas id="payload" width="32" height="32" aria-label="Actual bytes of the selected encoded chunk, shown as grayscale"></canvas><div id="payload-placeholder" class="placeholder"><strong>160 coded chunks</strong><span>Encode your drawing to create<br>2.5× redundancy.</span></div></div>
+    <p class="stat" id="chunk-label">No encoded chunks yet</p>
+    <div class="buttons"><button id="next" class="primary" disabled>Next chunk</button><button id="play" disabled>Auto play</button><button id="skip" disabled>Skip next</button></div>
+    <section class="bank" aria-labelledby="bank-heading">
+      <div class="bank-heading"><h3 id="bank-heading">Encoded chunks</h3><div class="legend"><span><i class="key"></i>Available</span><span><i class="key received"></i>Received</span><span><i class="key skipped"></i>Skipped</span></div></div>
+      <div id="chunk-grid" class="chunk-grid"><div class="empty-bank">Encode a drawing to explore its chunks.</div></div>
+    </section>
+  </section>
+  <section class="stage" aria-labelledby="recovered-heading">
+    <div class="stage-heading"><span class="step">03</span><h2 id="recovered-heading">Reconstruct</h2></div>
+    <div class="image-wrap"><canvas id="recovered" width="128" height="128" aria-label="Drawing reconstructed from received chunks by the Raptor decoder"></canvas><div id="recovery-placeholder" class="placeholder"><strong>Waiting for chunks</strong><span>The drawing appears when<br>the decoder completes.</span></div></div>
+    <p id="received-count" class="stat">0 unique chunks received</p>
+    <progress id="received-progress" max="160" value="0" aria-label="Unique chunks received out of 160 encoded chunks"></progress>
+    <p id="recovery-note" class="caption">64 source chunks</p>
+    <div id="verified" class="verification" role="status"></div>
+    <div class="buttons"><button id="shuffle" disabled>Shuffle &amp; restart</button></div>
+  </section>
+</div>
+<noscript>This page requires JavaScript and WebAssembly.</noscript>
+</main>
+<script>window.DRAWING_WASM = {{WASM}};</script>
+<script>{{DRAWING_CODEC}}</script>
+<script>{{DRAWING_UI}}</script>
+</body>
+</html>

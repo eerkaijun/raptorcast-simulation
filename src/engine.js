@@ -150,7 +150,6 @@
       if (!q.active) { q.active = true; heap.push(ready, { type: 'transmit', from }); }
     }
     function transmit(from, time) {
-      // Recheck priority after each packet so rebroadcasts can overtake queued publications.
       const q = outgoing.get(from), packet = q.queues[0].shift() || q.queues[1].shift();
       if (!packet) { q.active = false; return; }
       packet.start = time;
@@ -161,7 +160,6 @@
       heap.push(packet.txEnd, { type: 'transmit', from });
     }
     makeMessage(leader, 0, validators.filter(n=>n!==leader), true);
-    // The leader can publish to full nodes immediately.
     publish(leader.id, 0);
     while (heap.items.length) {
       const event = heap.pop(), {time, data} = event;
@@ -196,7 +194,7 @@
       decoded: Object.fromEntries(decoded), publications: Object.fromEntries(publications), vds, fds,
       vTotal: validators.length-1, fTotal: fullnodes.length, sendTimes, lossTimes, lastDecode, end,
       failed: validators.length-1-vds.length+fullnodes.length-fds.length, counters };
-    codec.reset(); // Release the WASM allocations for this run.
+    codec.reset();
     return result;
   }
   const api = { PROTOCOL, DEFAULTS, LATENCY_BANDS, Codec, layout, assign, simulate, defaultGroups, latency, random };

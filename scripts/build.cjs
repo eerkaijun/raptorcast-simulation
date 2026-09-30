@@ -37,7 +37,14 @@ for(const withholding of [false,true]){
   fs.writeFileSync(filename,html);outputs[filename]=hash(html);
   console.log(`Built ${filename} (${Math.round(Buffer.byteLength(html)/1024)} KiB).`);
 }
-const files=['src/engine.js','src/ui.js','src/page.html','src/withholding-scenario.cjs','src/withholding-controls.html','src/withholding.css','codec/lib.rs','../monad-bft/monad-raptorcast/src/packet/assigner.rs','../monad-bft/monad-raptorcast/src/packet/deterministic.rs','../monad-bft/monad-raptorcast/src/decoding.rs'];
+const drawingValues={WASM:JSON.stringify(wasm.toString('base64')),DRAWING_CODEC:read('src/drawing-codec.js'),DRAWING_UI:read('src/drawing-ui.js')};
+const drawingHtml=embedAssets(read('src/drawing-page.html')).replace(/\{\{(\w+)\}\}/g,(_,name)=>{
+  if(!(name in drawingValues))throw new Error('Unknown template marker: '+name);
+  return drawingValues[name].replace(/<\/script/gi,'<\\/script');
+});
+fs.writeFileSync('drawing.html',drawingHtml);outputs['drawing.html']=hash(drawingHtml);
+console.log(`Built drawing.html (${Math.round(Buffer.byteLength(drawingHtml)/1024)} KiB).`);
+const files=['src/engine.js','src/ui.js','src/page.html','src/withholding-scenario.cjs','src/withholding-controls.html','src/withholding.css','src/drawing-codec.js','src/drawing-ui.js','src/drawing-page.html','codec/lib.rs','../monad-bft/monad-raptorcast/src/packet/assigner.rs','../monad-bft/monad-raptorcast/src/packet/deterministic.rs','../monad-bft/monad-raptorcast/src/decoding.rs'];
 function walk(dir){for(const name of fs.readdirSync(dir)){const p=path.join(dir,name);if(fs.statSync(p).isDirectory())walk(p);else if(p.endsWith('.rs'))files.push(p);}}
 walk('../monad-bft/monad-raptor/src');
 const manifest={monadCommit:execFileSync('git',['-C','../monad-bft','rev-parse','HEAD'],{encoding:'utf8'}).trim(),wasmSha256:hash(wasm),htmlSha256:outputs['simulation.html'],outputs,sources:Object.fromEntries(files.map(f=>[f,hash(fs.readFileSync(f))]))};

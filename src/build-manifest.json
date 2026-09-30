@@ -1,19 +1,23 @@
 {
   "monadCommit": "18b86935e4f8465514176d29c1afb93ec7a5ba2d",
-  "wasmSha256": "daf3668e636219b6bcef334fc6e0689f2e060adf65efb543f63f4c4a3c87265e",
-  "htmlSha256": "c7a25622ce015cc48856cd368d4f74420460c2455221b3ebdc093794df3047c5",
+  "wasmSha256": "ed2de55181092ff6a86659f3c0fc68ccc78c63ccea8d83488e4649125ef6b441",
+  "htmlSha256": "4d6aa4970ec6bf4295b04af5347151f0395e0207ca6a5f61ad633a8df55575ee",
   "outputs": {
-    "simulation.html": "c7a25622ce015cc48856cd368d4f74420460c2455221b3ebdc093794df3047c5",
-    "withholding.html": "d3ad8a596aec7daf9b151b9f0d1b406bdc700081a0d01c3adfa1f8bc960c8c93"
+    "simulation.html": "4d6aa4970ec6bf4295b04af5347151f0395e0207ca6a5f61ad633a8df55575ee",
+    "withholding.html": "9f4d4a0f0921b578211a3b6a418d8a84d1e00c5252c52ae5c5c771ed1e91b05f",
+    "drawing.html": "4be8eeda140c8634dd5dc88d232032e1599e4f0cc133c3a6b96003a13e91c351"
   },
   "sources": {
-    "src/engine.js": "ec55af3f244901dc8c0f4e886836d4e2659f1930694a3a2b32eff22ab09b9119",
+    "src/engine.js": "752357145af4a01a82284f0f68f0ee070557286366f22517e969a34a4dcaf04c",
     "src/ui.js": "6cedaa6ddcdf713b6b1db9394cb836637a82afdb85162ba79cfb148b304e06da",
     "src/page.html": "2241f97b1750b318647287ed366f2aa31dd17b6d9a97e3e3a2f3b6d25d13dbc9",
     "src/withholding-scenario.cjs": "77093ad2c82b6c0d9e5e601680a1f40662d65f07e49459393ec2199acbe92875",
     "src/withholding-controls.html": "79e0d6fdd960746141360df107cbffc1524b915104b399d31205831daa1dab0f",
     "src/withholding.css": "92da79ad33708ac41cebf71e00c7e9007d341da51f0926db4e88c0ec1e2ce51f",
-    "codec/lib.rs": "a179f455875b199fb2aa94aaee142abd0ff3f2b93e88159c2a45972455da0ed9",
+    "src/drawing-codec.js": "9e38ed5b4661d5af5ee13f0eb51a97db5ff8c7fb2293c093733f165d7fc21e73",
+    "src/drawing-ui.js": "56fb8f7895501f907fed70647f83ab9a9a5d4ce0b236a93ef7d1f80c06040284",
+    "src/drawing-page.html": "e929e789c37249498bf8ea0d68d791bfb354a2b912d5679b78ddee73c8efd043",
+    "codec/lib.rs": "2c178c43f7d6e286e07ee946db00c4854c610b0be0a7d86768911caab6f6437d",
     "../monad-bft/monad-raptorcast/src/packet/assigner.rs": "94675537fa68db2751822af866abea6173a1110aa1be24007e6fd74c7e63d231",
     "../monad-bft/monad-raptorcast/src/packet/deterministic.rs": "0993dc64c12b0d86ac1c47b2bb1a79b42310797f123509953f45c1e60191b958",
     "../monad-bft/monad-raptorcast/src/decoding.rs": "793fdda8234e31f011b79c6cda2e19a183225070cd64d99828f7ed5a376dc3ab",

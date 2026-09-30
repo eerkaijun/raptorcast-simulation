@@ -1,4 +1,3 @@
-// Compile the upstream assignment method with minimal types for storage and arithmetic.
 const fs=require('node:fs'),path=require('node:path'),{execFileSync}=require('node:child_process');
 module.exports=function reference(cases){
   const upstream=fs.readFileSync('../monad-bft/monad-raptorcast/src/packet/assigner.rs','utf8');

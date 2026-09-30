@@ -15,6 +15,7 @@ struct Receiver {
     seen: Vec<bool>,
     done: bool,
     count: u32,
+    recovered: Vec<u8>,
 }
 #[derive(Default)]
 struct Pool {
@@ -22,6 +23,7 @@ struct Pool {
     receivers: Vec<Receiver>,
     seed: [u8; 32],
     order: Vec<usize>,
+    input: Vec<u8>,
 }
 thread_local! { static POOL: RefCell<Pool> = RefCell::new(Pool::default()); }
 
@@ -32,6 +34,11 @@ pub extern "C" fn reset() { POOL.with(|p| *p.borrow_mut() = Pool::default()); }
 pub extern "C" fn message_new(len: u32, symbol_len: u32, count: u32, salt: u32) -> u32 {
     assert!(len > 0 && len <= 256 * 1024 && symbol_len > 0 && count < 65521);
     let source: Vec<u8> = (0..len).map(|i| (i.wrapping_mul(37) ^ (i / 11) ^ salt) as u8).collect();
+    encode_message(source, symbol_len, count)
+}
+
+fn encode_message(source: Vec<u8>, symbol_len: u32, count: u32) -> u32 {
+    assert!(!source.is_empty() && source.len() <= 256 * 1024 && symbol_len > 0 && count < 65521);
     let encoder = Encoder::new(&source, symbol_len as usize).unwrap();
     let k = encoder.num_source_symbols();
     let symbols = (0..count).map(|esi| {
@@ -54,7 +61,7 @@ pub extern "C" fn decoder_new(message: u32) -> u32 {
         let m = &p.messages[message as usize];
         let r = Receiver { message: message as usize,
             decoder: ManagedDecoder::new(m.k, m.symbols.len(), m.symbol_len).unwrap(),
-            seen: vec![false; m.symbols.len()], done: false, count: 0 };
+            seen: vec![false; m.symbols.len()], done: false, count: 0, recovered: Vec::new() };
         let id = p.receivers.len();
         p.receivers.push(r);
         id as u32
@@ -70,20 +77,84 @@ pub extern "C" fn receive(receiver: u32, esi: u32) -> i32 {
         let Pool { messages, receivers, .. } = &mut *p;
         let r = &mut receivers[receiver as usize];
         let m = &messages[r.message];
-        let esi = esi as usize;
-        if esi >= r.seen.len() { return -1; }
-        if r.seen[esi] { return 2; }
-        r.seen[esi] = true;
-        r.count += 1;
-        if r.done { return 3; }
-        r.decoder.received_encoded_symbol(&m.symbols[esi], esi);
-        if !r.decoder.try_decode() { return 0; }
-        let mut recovered = r.decoder.reconstruct_source_data().unwrap();
-        recovered.truncate(m.source.len());
-        assert_eq!(recovered, m.source, "decoded bytes differ from proposal");
-        r.done = true;
-        1
+        let Some(symbol) = m.symbols.get(esi as usize) else { return -1; };
+        receive_symbol(r, m, esi as usize, symbol)
     })
+}
+
+fn receive_symbol(r: &mut Receiver, m: &Message, esi: usize, symbol: &[u8]) -> i32 {
+    if esi >= r.seen.len() || symbol.len() != m.symbol_len { return -1; }
+    if r.seen[esi] { return 2; }
+    r.seen[esi] = true;
+    r.count += 1;
+    if r.done { return 3; }
+    r.decoder.received_encoded_symbol(symbol, esi);
+    if !r.decoder.try_decode() { return 0; }
+    let mut recovered = r.decoder.reconstruct_source_data().unwrap();
+    recovered.truncate(m.source.len());
+    assert_eq!(recovered, m.source, "decoded bytes differ from source");
+    r.recovered = recovered;
+    r.done = true;
+    1
+}
+
+#[no_mangle]
+pub extern "C" fn input_buffer(len: u32) -> *mut u8 {
+    assert!(len <= 256 * 1024);
+    POOL.with(|p| {
+        let mut p = p.borrow_mut();
+        p.input.resize(len as usize, 0);
+        p.input.as_mut_ptr()
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn message_from_input(symbol_len: u32, count: u32) -> u32 {
+    let source = POOL.with(|p| p.borrow().input.clone());
+    encode_message(source, symbol_len, count)
+}
+
+#[no_mangle]
+pub extern "C" fn message_source_symbols(message: u32) -> u32 {
+    POOL.with(|p| p.borrow().messages[message as usize].k as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn symbol_ptr(message: u32, esi: u32) -> *const u8 {
+    POOL.with(|p| p.borrow().messages[message as usize].symbols[esi as usize].as_ptr())
+}
+
+#[no_mangle]
+pub extern "C" fn receive_input(receiver: u32, esi: u32) -> i32 {
+    POOL.with(|p| {
+        let mut p = p.borrow_mut();
+        let Pool { messages, receivers, input, .. } = &mut *p;
+        let r = &mut receivers[receiver as usize];
+        receive_symbol(r, &messages[r.message], esi as usize, input)
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn decoder_restart(receiver: u32) {
+    POOL.with(|p| {
+        let mut p = p.borrow_mut();
+        let message = p.receivers[receiver as usize].message;
+        let m = &p.messages[message];
+        let r = Receiver { message,
+            decoder: ManagedDecoder::new(m.k, m.symbols.len(), m.symbol_len).unwrap(),
+            seen: vec![false; m.symbols.len()], done: false, count: 0, recovered: Vec::new() };
+        p.receivers[receiver as usize] = r;
+    });
+}
+
+#[no_mangle]
+pub extern "C" fn recovered_ptr(receiver: u32) -> *const u8 {
+    POOL.with(|p| p.borrow().receivers[receiver as usize].recovered.as_ptr())
+}
+
+#[no_mangle]
+pub extern "C" fn recovered_len(receiver: u32) -> u32 {
+    POOL.with(|p| p.borrow().receivers[receiver as usize].recovered.len() as u32)
 }
 
 #[no_mangle]
@@ -137,5 +208,35 @@ mod tests {
             let r = decoder_new(m);
             assert!((0..n).any(|id| receive(r, id as u32) == 1));
         }
+    }
+
+    #[test]
+    fn input_bytes_roundtrip_and_decoder_restart() {
+        reset();
+        let source: Vec<u8> = (0..65536).map(|i| ((i * 17 + i / 7) % 256) as u8).collect();
+        POOL.with(|p| p.borrow_mut().input = source.clone());
+        let m = message_from_input(1024, 160);
+        assert_eq!(message_source_symbols(m), 64);
+        let r = decoder_new(m);
+        for _ in 0..2 {
+            assert_eq!(recovered_len(r), 0);
+            let mut complete = false;
+            for esi in (0..130).rev() {
+                POOL.with(|p| {
+                    let mut p = p.borrow_mut();
+                    p.input = p.messages[m as usize].symbols[esi as usize].clone();
+                });
+                let status = receive_input(r, esi);
+                assert_eq!(receive_input(r, esi), 2);
+                if status == 1 { complete = true; break; }
+            }
+            assert!(complete);
+            POOL.with(|p| assert_eq!(p.borrow().receivers[r as usize].recovered, source));
+            decoder_restart(r);
+            assert_eq!(received_count(r), 0);
+        }
+        POOL.with(|p| p.borrow_mut().input = vec![0; 3]);
+        assert_eq!(receive_input(r, 0), -1);
+        assert_eq!(received_count(r), 0);
     }
 }
