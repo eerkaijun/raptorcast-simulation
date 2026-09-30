@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monad RaptorCast · Network simulation</title>
+<title>Monad RaptorCast · {{TITLE}}</title>
 <style>
 @font-face{font-family:Satoshi;src:url('{{satoshi-regular.otf}}');font-weight:400;font-display:swap}
 @font-face{font-family:Satoshi;src:url('{{satoshi-medium.otf}}');font-weight:500;font-display:swap}
@@ -19,25 +19,27 @@ main{max-width:1920px;margin:auto;padding:clamp(20px,3.7vw,72px)}header{display:
 #chart{height:150px}
 @media(max-width:900px){.layout{grid-template-columns:1fr;gap:24px}.controls{display:grid;grid-template-columns:1fr 1fr}.controls>.eyebrow,.controls>.leader-field,.reconstruction,.playback,.caption,.lost-row{grid-column:1/-1}.intro{margin-bottom:18px}h1{margin-top:24px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+{{SCENARIO_STYLE}}
 </style>
 </head>
 <body>
 <main>
 <header><img src="{{logo.svg}}" alt="Category Labs"><span class="eyebrow">Monad · RaptorCast v1</span></header>
-<h1>Network topology simulation</h1>
+<h1>{{TITLE}}</h1>
 <div id="error" role="alert" hidden></div>
 <div class="layout">
   <div class="visual">
     <div class="map-wrap"><canvas id="map" width="2600" height="946" aria-label="Animated map of primary and secondary RaptorCast packets"></canvas></div>
-    <div class="legend"><span><i class="swatch orange"></i>Primary · hop 1</span><span><i class="swatch"></i>Primary · hop 2</span><span><i class="swatch grey"></i>Secondary</span><span><i class="red">×</i>Lost packet</span></div>
+    <div class="legend"><span><i class="swatch orange"></i>Primary · hop 1</span><span><i class="swatch"></i>Primary · hop 2</span><span><i class="swatch grey"></i>Secondary</span>{{#NETWORK}}<span><i class="red">×</i>Lost packet</span>{{/NETWORK}}{{SCENARIO_LEGEND}}</div>
     <div class="counts"><span>Validators <span id="validators" class="count">0 / 15</span></span><span>Full nodes <span id="fullnodes" class="count">0 / 48</span></span><span id="previous" class="previous" hidden></span></div>
     <canvas id="chart" width="2600" height="300" aria-label="Fraction of nodes that reconstructed the proposal over simulated time"></canvas>
   </div>
   <aside class="controls" aria-label="Simulation controls">
     <div class="eyebrow">Network conditions</div>
     <div class="field"><span class="label">One-way latency</span><span class="geographic">Geographic · 2–160 ms</span></div>
-    <div class="field"><span class="label" id="loss-label">Packet loss per hop</span><div class="segmented" id="loss-controls" role="group" aria-labelledby="loss-label"><button data-loss="0" aria-pressed="true">0%</button><button data-loss="0.1" aria-pressed="false">10%</button><button data-loss="0.2" aria-pressed="false">20%</button><button data-loss="0.3" aria-pressed="false">30%</button></div></div>
+{{#NETWORK}}<div class="field"><span class="label" id="loss-label">Packet loss per hop</span><div class="segmented" id="loss-controls" role="group" aria-labelledby="loss-label"><button data-loss="0" aria-pressed="true">0%</button><button data-loss="0.1" aria-pressed="false">10%</button><button data-loss="0.2" aria-pressed="false">20%</button><button data-loss="0.3" aria-pressed="false">30%</button></div></div>{{/NETWORK}}
     <div class="field leader-field"><span class="label" id="leader-label">Leader</span><div class="segmented" id="leader-controls" role="group" aria-labelledby="leader-label"><button data-leader="0" aria-pressed="true">Ashburn</button><button data-leader="6" aria-pressed="false">Frankfurt</button><button data-leader="14" aria-pressed="false">Tokyo</button></div></div>
+{{SCENARIO_CONTROLS}}
     <div class="reconstruction">
       <div class="eyebrow">Reconstruction time</div>
       <dl><dt>All validators</dt><dd id="validator-time">In progress</dd><dt>All full nodes</dt><dd id="fullnode-time">In progress</dd></dl>
@@ -45,7 +47,7 @@ main{max-width:1920px;margin:auto;padding:clamp(20px,3.7vw,72px)}header{display:
     </div>
     <div class="playback"><button class="plain-btn" id="pause" aria-label="Pause animation">Pause</button><button class="plain-btn" id="replay">Replay</button></div>
     <div class="caption" id="caption" role="status">Loading the embedded Raptor codec…</div>
-    <div class="lost-row"><span>Packets lost</span><span id="lost">0 of 0</span></div>
+{{#NETWORK}}<div class="lost-row"><span>Packets lost</span><span id="lost">0 of 0</span></div>{{/NETWORK}}
   </aside>
 </div>
 <noscript>This simulation requires JavaScript and WebAssembly.</noscript>

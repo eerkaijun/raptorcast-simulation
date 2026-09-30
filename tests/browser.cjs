@@ -9,7 +9,7 @@ const {pathToFileURL}=require('node:url');
     page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
     await page.clock.install();
-    await page.goto(pathToFileURL(path.resolve('RaptorCast Simulation.html')).href);
+    await page.goto(pathToFileURL(path.resolve('simulation.html')).href);
     await page.clock.runFor(100);
     await page.waitForFunction(()=>window.raptorSimulation?.run);
     assert.equal(await page.locator('#error').isVisible(),false);

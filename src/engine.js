@@ -4,7 +4,7 @@
     segmentBytes: 1440, headerBytes: 117, chunkHeaderBytes: 4, merkleHashBytes: 20,
     minDepth: 3, maxDepth: 15, redundancy: 2.5, round: 1, timestamp: 1735689600000 });
   const DEFAULTS = Object.freeze({ leader: 0, loss: 0, proposalBytes: 65536, uploadMbps: 1000,
-    seed: 1, latencyScale: 1, publicationDelayMs: 0 });
+    seed: 1, latencyScale: 1, publicationDelayMs: 0, withholdingValidator: null });
 
   function mix(x) { x = Math.imul(x ^ x >>> 16, 0x21f0aaad); x = Math.imul(x ^ x >>> 15, 0x735a2d97); return (x ^ x >>> 15) >>> 0; }
   // Keyed draws keep packet loss stable when event order changes.
@@ -106,13 +106,14 @@
     const validators = nodes.filter(n=>n.role==='validator'), fullnodes = nodes.filter(n=>n.role==='fullnode');
     const leader = byId.get(config.leader);
     if (!leader || leader.role !== 'validator') throw new Error('Leader must be a validator');
+    if (config.withholdingValidator !== null && (byId.get(config.withholdingValidator)?.role !== 'validator' || config.withholdingValidator === leader.id)) throw new Error('Withholding requires a non-leader validator');
     const groups = options.groups || defaultGroups(nodes);
     for (const g of groups) {
       if (byId.get(g.publisher)?.role !== 'validator' || new Set(g.members).size !== g.members.length || g.members.some(id=>byId.get(id)?.role !== 'fullnode')) throw new Error('Invalid group snapshot');
     }
     if (new Set(groups.map(g=>g.publisher)).size !== groups.length) throw new Error('Only one active group per publisher');
     codec.reset();
-    const heap = new Heap(), packets = [], messages = [], streams = new Map(), outgoing = new Map();
+    const heap = new Heap(), packets = [], messages = [], withheld = [], streams = new Map(), outgoing = new Map();
     const decoded = new Map([[leader.id, 0]]), publications = new Map(), codecMessages = new Map();
     const counters = { verifiedReconstructions: 0, duplicateDrops: 0 };
     function makeMessage(publisher, at, recipients, primary) {
@@ -173,7 +174,11 @@
       s.arrivals.push({ time, esi: packet.esi });
       // Continue forwarding assigned symbols after local decoding completes.
       if (m.targets[packet.esi] === packet.to) {
-        for (const target of m.order) if (target !== packet.to) send(m, packet.to, target, packet.esi, time, m.primary ? 1 : 3);
+        if (m.primary && packet.to === config.withholdingValidator) {
+          withheld.push({time, node:packet.to, message:m.id, esi:packet.esi});
+        } else {
+          for (const target of m.order) if (target !== packet.to) send(m, packet.to, target, packet.esi, time, m.primary ? 1 : 3);
+        }
       }
       if (result === 1) {
         s.decodedAt = time; counters.verifiedReconstructions++;
@@ -187,7 +192,7 @@
     const lastDecode = Math.max(0, ...vds, ...fds);
     const end = packets.reduce((t,p)=>Math.max(t, p.lost ? p.lossTime + 15 : p.arrive), lastDecode) + 1;
     const streamList = [...streams.values()].map(({decoder, ...s})=>s);
-    const result = { config, groups, messages: messages.map(({codecMessage,...m})=>m), packets, streams: streamList,
+    const result = { config, groups, messages: messages.map(({codecMessage,...m})=>m), packets, withheld, streams: streamList,
       decoded: Object.fromEntries(decoded), publications: Object.fromEntries(publications), vds, fds,
       vTotal: validators.length-1, fTotal: fullnodes.length, sendTimes, lossTimes, lastDecode, end,
       failed: validators.length-1-vds.length+fullnodes.length-fds.length, counters };

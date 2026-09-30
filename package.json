@@ -4,7 +4,7 @@
   "scripts": {
     "build": "node scripts/build.cjs",
     "test": "node --test tests/engine.test.cjs",
-    "test:browser": "node tests/browser.cjs"
+    "test:browser": "node tests/browser.cjs && node tests/withholding-browser.cjs"
   },
   "devDependencies": { "playwright": "1.63.0" }
 }

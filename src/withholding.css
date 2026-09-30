@@ -1,0 +1,6 @@
+.withholding-field{border-top:1px solid var(--line);padding-top:17px;grid-column:1/-1}
+.scenario-note{font-size:13px;line-height:1.5;color:var(--muted);margin:2px 0 6px}
+.scenario-metric{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--muted)}
+.scenario-metric strong{color:#0e0e0e;font-variant-numeric:tabular-nums;white-space:nowrap}
+.withholding-ring{display:inline-block;width:12px;height:12px;border:2px solid #7c3aed;border-radius:50%}
+.controls>.field{grid-column:1/-1}

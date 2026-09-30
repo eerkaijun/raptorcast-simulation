@@ -1,0 +1,10 @@
+<div class="field withholding-field">
+  <span class="label" id="withholding-label">London · 20% of total stake</span>
+  <div class="segmented" role="group" aria-labelledby="withholding-label">
+    <button data-withholding="false" aria-pressed="false">Forwarding</button>
+    <button data-withholding="true" aria-pressed="true">Withholding</button>
+  </div>
+  <p class="scenario-note">Withholding stops London's relay to other validators. It still receives chunks and publishes to full nodes after reconstructing.</p>
+  <div class="scenario-metric"><span>Primary chunks assigned</span><strong id="assigned-chunks">—</strong></div>
+  <div class="scenario-metric"><span>Chunks withheld</span><strong id="withheld-chunks">0</strong></div>
+</div>

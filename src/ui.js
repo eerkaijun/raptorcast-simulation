@@ -2,9 +2,11 @@
   'use strict';
   const $ = id => document.getElementById(id), W = 1300, H = 473, SLOW = 12;
   const topology = window.RAPTOR_DATA.topology, nodes = topology.nodes;
+  const withholding = window.RAPTOR_DATA.withholding;
   const nodeById = new Map(nodes.map(n=>[n.id,n]));
   const map = $('map'), chart = $('chart'), ctx = map.getContext('2d'), cc = chart.getContext('2d');
   const state = { config: {...RaptorSim.DEFAULTS}, run:null, previous:null, time:0, paused:false, last:0, ui:0, busy:false, revision:0 };
+  if(withholding)state.config.withholdingValidator=withholding.validator;
   let codec;
   const background = document.createElement('canvas'); background.width = 2600; background.height = 946;
   const bg = background.getContext('2d'); bg.scale(2,2); bg.fillStyle='#d4d4d4';
@@ -16,12 +18,14 @@
   function controls(){
     document.querySelectorAll('[data-loss]').forEach(b=>b.setAttribute('aria-pressed',Number(b.dataset.loss)===state.config.loss));
     document.querySelectorAll('[data-leader]').forEach(b=>b.setAttribute('aria-pressed',Number(b.dataset.leader)===state.config.leader));
+    document.querySelectorAll('[data-withholding]').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.withholding==='true')===(state.config.withholdingValidator!==null)));
     document.querySelectorAll('button,select,input').forEach(e=>e.disabled=state.busy);
     $('pause').textContent=state.paused?'Play':'Pause';$('pause').setAttribute('aria-label',state.paused?'Play animation':'Pause animation');
   }
   function geometry(run){
     for(const p of run.packets){const a=nodeById.get(p.from),b=nodeById.get(p.to);let dx=b.x-a.x;if(dx>W/2)dx-=W;else if(dx<-W/2)dx+=W;const dy=b.y-a.y,len=Math.hypot(dx,dy)||1,bend=Math.min(.12*len,40);p.g=[a.x,a.y,dx,dy,-dy/len*bend,dx/len*bend,Math.min(1,14/len)];}
     run.nodeStreams=new Map(nodes.map(n=>[n.id,run.streams.filter(s=>s.node===n.id).map(s=>({...s,times:s.arrivals.map(a=>a.time)}))]));
+    run.withheldTimes=run.withheld.map(w=>w.time);
   }
   function rerun(patch={}){
     if(state.busy)return;
@@ -31,10 +35,12 @@
     setTimeout(()=>{
       try{
         const run=RaptorSim.simulate(codec,topology,next);geometry(run);
-        state.previous=state.run;state.run=run;state.config=next;state.time=0;state.paused=false;state.last=performance.now();state.revision++;
+        const comparison=withholding?(next.withholdingValidator!==null?RaptorSim.simulate(codec,topology,{...next,withholdingValidator:null}):null):state.run;
+        state.previous=comparison;state.run=run;state.config=next;state.time=0;state.paused=false;state.last=performance.now();state.revision++;
         $('error').hidden=true;
         $('previous').hidden=!state.previous;
-        if(state.previous){$('previous').replaceChildren();const dash=document.createElement('i');dash.className='dash';$('previous').append(dash,document.createTextNode('Previous · '+label(state.previous)));}
+        if(state.previous){$('previous').replaceChildren();const dash=document.createElement('i');dash.className='dash';$('previous').append(dash,document.createTextNode(withholding?'Forwarding baseline · same settings':'Previous · '+label(state.previous)));}
+        if(withholding){const primary=run.messages.find(m=>m.primary);$('assigned-chunks').textContent=`${primary.targets.filter(id=>id===withholding.validator).length} / ${primary.targets.length}`;}
         draw();pushUi();
       }catch(e){fail(e);}finally{state.busy=false;controls();}
     },20);
@@ -44,8 +50,9 @@
     function completionTime(times,total){return times.length===total&&t>=times[total-1]?`${times[total-1].toFixed(1)} ms`:finished?'Incomplete':'In progress';}
     $('validator-time').textContent=completionTime(r.vds,r.vTotal);$('fullnode-time').textContent=completionTime(r.fds,r.fTotal);
     $('validators').textContent=`${ub(r.vds,t)} / ${r.vTotal}`;$('fullnodes').textContent=`${ub(r.fds,t)} / ${r.fTotal}`;
-    $('lost').textContent=`${ub(r.lossTimes,t).toLocaleString()} of ${ub(r.sendTimes,t).toLocaleString()}`;
+    if($('lost'))$('lost').textContent=`${ub(r.lossTimes,t).toLocaleString()} of ${ub(r.sendTimes,t).toLocaleString()}`;
     $('caption').textContent=finished?'':`Animation${state.paused?' paused':''} · ${SLOW}× slower`;
+    if(withholding)$('withheld-chunks').textContent=ub(r.withheldTimes,t);
   }
   const wrap=x=>(x+W)%W;
   function point(g,f){const s=Math.sin(Math.PI*f);return[g[0]+g[2]*f+g[4]*s,g[1]+g[3]*f+g[5]*s];}
@@ -66,6 +73,14 @@
       ctx.beginPath();ctx.arc(n.x,n.y,radius,0,Math.PI*2);ctx.strokeStyle=t>=r.end&&!decoded?'#dc2626':color;ctx.lineWidth=n.role==='validator'?2:1.4;ctx.stroke();
     }
     const leader=nodeById.get(r.config.leader);ctx.beginPath();ctx.arc(leader.x,leader.y,leader.r+3,0,Math.PI*2);ctx.fillStyle='#ff5500';ctx.fill();ctx.font='500 19px Satoshi, sans-serif';ctx.textAlign='center';ctx.lineJoin='round';ctx.lineWidth=5;ctx.strokeStyle='white';ctx.strokeText('LEADER · '+leader.name,leader.x,leader.y-leader.r-13);ctx.fillStyle='#b83700';ctx.fillText('LEADER · '+leader.name,leader.x,leader.y-leader.r-13);
+    if(withholding){
+      const n=nodeById.get(withholding.validator),active=r.config.withholdingValidator!==null;
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r+5,0,Math.PI*2);ctx.lineWidth=2.5;ctx.strokeStyle='#7c3aed';ctx.setLineDash(active?[4,3]:[]);ctx.stroke();ctx.setLineDash([]);
+      const count=ub(r.withheldTimes,t),age=count?t-r.withheldTimes[count-1]:Infinity;
+      if(age<12){ctx.globalAlpha=1-age/12;ctx.beginPath();ctx.arc(n.x,n.y,n.r+7+age,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
+      const text=`${active?'WITHHOLDING':'FORWARDING'} · ${n.name} · ${withholding.stakePercent}%`;
+      ctx.font='500 17px Satoshi, sans-serif';ctx.lineWidth=5;ctx.strokeStyle='white';ctx.strokeText(text,n.x,n.y-n.r-22);ctx.fillStyle='#7c3aed';ctx.fillText(text,n.x,n.y-n.r-22);
+    }
     drawChart();
   }
   function drawChart(){
@@ -86,9 +101,10 @@
   }
   document.querySelectorAll('[data-loss]').forEach(b=>b.addEventListener('click',()=>{if(Number(b.dataset.loss)!==state.config.loss)rerun({loss:Number(b.dataset.loss)});}));
   document.querySelectorAll('[data-leader]').forEach(b=>b.addEventListener('click',()=>{if(Number(b.dataset.leader)!==state.config.leader)rerun({leader:Number(b.dataset.leader)});}));
+  document.querySelectorAll('[data-withholding]').forEach(b=>b.addEventListener('click',()=>{const validator=b.dataset.withholding==='true'?withholding.validator:null;if(validator!==state.config.withholdingValidator)rerun({withholdingValidator:validator});}));
   $('replay').addEventListener('click',()=>{if(!state.run)return;state.time=0;state.paused=false;state.last=performance.now();controls();draw();pushUi();});
   $('pause').addEventListener('click',()=>{state.paused=!state.paused;controls();pushUi();});
   window.addEventListener('resize',()=>{if(state.run)draw();});
-  window.raptorSimulation={get run(){return state.run;},get revision(){return state.revision;},get time(){return state.time;},get paused(){return state.paused;}};
+  window.raptorSimulation={get run(){return state.run;},get comparison(){return state.previous;},get revision(){return state.revision;},get time(){return state.time;},get paused(){return state.paused;}};
   try{codec=new RaptorSim.Codec(Uint8Array.from(atob(window.RAPTOR_DATA.wasm),c=>c.charCodeAt(0)));rerun();state.last=performance.now();requestAnimationFrame(frame);}catch(e){fail(e);}
 })();

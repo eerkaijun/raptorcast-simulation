@@ -1,9 +1,18 @@
 {
   "monadCommit": "18b86935e4f8465514176d29c1afb93ec7a5ba2d",
   "wasmSha256": "daf3668e636219b6bcef334fc6e0689f2e060adf65efb543f63f4c4a3c87265e",
-  "htmlSha256": "8d2dbb0549e25f9d6da19efd26aece7860b290cd3428f9739ee28dd1f9044bfb",
+  "htmlSha256": "c7a25622ce015cc48856cd368d4f74420460c2455221b3ebdc093794df3047c5",
+  "outputs": {
+    "simulation.html": "c7a25622ce015cc48856cd368d4f74420460c2455221b3ebdc093794df3047c5",
+    "withholding.html": "d3ad8a596aec7daf9b151b9f0d1b406bdc700081a0d01c3adfa1f8bc960c8c93"
+  },
   "sources": {
-    "src/engine.js": "1d1ff31e7a44c5b0b058aff877b705a73369979af2d66325a07a9e00980bbb8f",
+    "src/engine.js": "ec55af3f244901dc8c0f4e886836d4e2659f1930694a3a2b32eff22ab09b9119",
+    "src/ui.js": "6cedaa6ddcdf713b6b1db9394cb836637a82afdb85162ba79cfb148b304e06da",
+    "src/page.html": "2241f97b1750b318647287ed366f2aa31dd17b6d9a97e3e3a2f3b6d25d13dbc9",
+    "src/withholding-scenario.cjs": "77093ad2c82b6c0d9e5e601680a1f40662d65f07e49459393ec2199acbe92875",
+    "src/withholding-controls.html": "79e0d6fdd960746141360df107cbffc1524b915104b399d31205831daa1dab0f",
+    "src/withholding.css": "92da79ad33708ac41cebf71e00c7e9007d341da51f0926db4e88c0ec1e2ce51f",
     "codec/lib.rs": "a179f455875b199fb2aa94aaee142abd0ff3f2b93e88159c2a45972455da0ed9",
     "../monad-bft/monad-raptorcast/src/packet/assigner.rs": "94675537fa68db2751822af866abea6173a1110aa1be24007e6fd74c7e63d231",
     "../monad-bft/monad-raptorcast/src/packet/deterministic.rs": "0993dc64c12b0d86ac1c47b2bb1a79b42310797f123509953f45c1e60191b958",

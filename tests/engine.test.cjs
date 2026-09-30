@@ -6,7 +6,7 @@ const codec=new S.Codec(wasm), nodes=new Map(topology.nodes.map(n=>[n.id,n]));
 const key=p=>[p.kind,p.publisher,p.from,p.to,p.esi].join('/');
 const cases=[], nativeLines=[], nativeExpected=new Map();
 
-function invariants(r){
+function invariants(r,nodeMap=nodes){
   const streams=new Map(r.streams.map(s=>[`${s.message}/${s.node}`,s]));
   const queues=new Map(),firstHops=new Map(),delivered=new Map();
   for(const p of r.packets){
@@ -38,7 +38,7 @@ function invariants(r){
     const symbolIds=new Set(r.packets.filter(p=>p.message===m.id&&(p.kind===0||p.kind===2)).map(p=>p.esi));
     assert.equal(symbolIds.size,m.targets.length);
     if(m.primary){
-      const members=m.order.map(id=>nodes.get(id)),total=members.reduce((s,n)=>s+n.stake,0);
+      const members=m.order.map(id=>nodeMap.get(id)),total=members.reduce((s,n)=>s+n.stake,0);
       for(const n of members)assert.equal(m.targets.filter(id=>id===n.id).length,Math.ceil(m.coding.scaled*n.stake/total));
     }else for(let i=0;i<m.targets.length;i++)assert.equal(m.targets[i],m.order[i%m.order.length]);
   }
@@ -130,4 +130,32 @@ test('rebroadcast priority preempts queued publications at the next packet bound
     for(const h of high)if(regular.some(p=>p.ready<h.ready&&p.start>h.start))bypassed++;
   }
   assert.ok(bypassed>0,'stress case actually exercises publication/rebroadcast contention');
+});
+
+test('20% stake withholding suppresses primary relays while receiving and secondary publication continue',()=>{
+  const scenario=require('../src/withholding-scenario.cjs').create(topology);
+  const ns=new Map(scenario.topology.nodes.map(n=>[n.id,n]));
+  const total=scenario.topology.nodes.filter(n=>n.role==='validator').reduce((sum,n)=>sum+n.stake,0);
+  assert.equal(ns.get(scenario.validator).stake/total,.2);
+  assert.equal(nodes.get(scenario.validator).stake,9,'scenario must not mutate the original topology');
+  for(const leader of [0,6,14])for(const loss of [0,.1,.2,.3]){
+    const normal=S.simulate(codec,scenario.topology,{leader,loss});
+    const r=S.simulate(codec,scenario.topology,{leader,loss,withholdingValidator:scenario.validator});
+    invariants(r,ns);
+    assert.deepEqual(r.messages[0].targets,normal.messages[0].targets);
+    assert.deepEqual(r.packets.filter(p=>p.kind===0).map(p=>[p.to,p.esi,p.lost]),normal.packets.filter(p=>p.kind===0).map(p=>[p.to,p.esi,p.lost]));
+    const received=r.packets.filter(p=>p.kind===0&&p.to===scenario.validator&&!p.lost);
+    assert.deepEqual(r.withheld.map(w=>w.esi).sort((a,b)=>a-b),received.map(p=>p.esi).sort((a,b)=>a-b));
+    assert.ok(r.packets.every(p=>!(p.kind===1&&p.from===scenario.validator)));
+    const assigned=new Set(r.messages[0].targets.flatMap((id,esi)=>id===scenario.validator?[esi]:[]));
+    assert.ok(r.streams.filter(s=>s.primary&&s.node!==scenario.validator).every(s=>s.arrivals.every(a=>!assigned.has(a.esi))));
+    if(loss===0){
+      assert.equal(r.vds.length,15);assert.equal(r.fds.length,48);assert.equal(r.lossTimes.length,0);
+      assert.equal(r.withheld.length,assigned.size);
+      assert.equal(r.streams.find(s=>s.primary&&s.node===scenario.validator).arrivals.length,r.messages[0].targets.length);
+      assert.ok(r.messages.some(m=>!m.primary&&m.publisher===scenario.validator));
+      assert.ok(r.streams.filter(s=>s.primary&&s.node!==scenario.validator).every(s=>s.arrivals.length===r.messages[0].targets.length-assigned.size));
+    }
+  }
+  for(const withholdingValidator of [0,16,999])assert.throws(()=>S.simulate(codec,scenario.topology,{withholdingValidator}));
 });
