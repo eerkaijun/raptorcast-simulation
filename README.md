@@ -1,3 +1,5 @@
+# Raptorcast Simulation
+
 Open [simulation.html](<simulation.html>) directly in a modern browser. It is a standalone, offline page: the map, fonts, and Rust WebAssembly codec are embedded. No server or network access is needed to run it.
 
 [withholding.html](<withholding.html>) shows London holding 20% of total validator stake and selectively withholding primary rebroadcasts. Toggle Forwarding / Withholding to compare behavior. The other validators' stakes are scaled proportionally, and the dashed curves show a forwarding baseline with the same stake distribution and leader, with network packet loss fixed at zero. London still receives and decodes chunks and publishes to its full-node group. The counter tracks received chunks that London refuses to relay. `npm run build` generates all three pages.
